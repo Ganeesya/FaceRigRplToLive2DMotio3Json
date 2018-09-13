@@ -1,38 +1,22 @@
 import glob
 import os
 import math
-from functools import reduce
+import functools
 import struct
 import sys
+import plotly.offline as po
+import plotly.graph_objs as go
 
-#import plotly.offline as po
-#import plotly.graph_objs as go
 
 def getFileSize(fname):
 	return os.path.getsize(fname)
 
+# for calc 1frame size
 def gcd_list(numbers):
-    return reduce(math.gcd, numbers)
+    return functools.reduce(math.gcd, numbers)
 
-def convert_to_csv(fname,startsize,loopsize):
-	outFileName = fname+".csv"
-	if(os.path.exists(outFileName)):
-		return
-	readFile = open(fname,"rb")
-	wFile = open(outFileName,"w")
 
-	readFile.seek(startsize)
-	try:
-		while True:
-			for i in range(0,int(loopsize/4)):
-				value = struct.unpack_from("f",readFile.read(4))[0]
-				wFile.write(str(value))
-				wFile.write(",")
-			wFile.write("\n")
-	except Exception:
-		readFile.close()
-		wFile.close()
-
+# for analysis.
 def convert_mem_to_csv(fname,data,cherryPick):
 	outFileName = fname+".csv"
 	#if(os.path.exists(outFileName)):
@@ -54,6 +38,8 @@ def convert_mem_to_csv(fname,data,cherryPick):
 			wFile.write("\n")
 		index = index + 1
 
+
+# load rpl to mem.
 def readRPL(fname,startsize,loopsize):
 	readFile = open(fname,"rb")
 	ret = []
@@ -72,43 +58,49 @@ def readRPL(fname,startsize,loopsize):
 		readFile.close()
 	return ret
 
-#def makeGrafHtml(fname,datas):
-#    grafFname = fname + "_glaf.html"
-#    trace = []
-#    index = 0
-#    times = []
-#    for i in range(len(datas[0]["datas"])):
-#        times.append(i)
-#    for dataline in datas:
-#        profilename = ""
-#        if(str(index) in profiles.keys()):
-#            profilename = profiles[str(index)][IDProfileSlot]
-#        trace.append(go.Scatter(
-#            x = times,
-#            y = dataline["datas"],
-#            name = str(index)+"_"+profilename ))
-#        index = index + 1
-#    # layoutを作成
-#    layout = go.Layout(
-#        # デフォルトでは描画領域が狭いのでmarginを0に
-#        margin=dict(
-#            l=0,
-#            r=0,
-#            b=0,
-#            t=0
-#        )
-#    )
-#    # traceとlayoutからfigureを作成
-#    fig = go.Figure(data= trace, layout=layout)
-#    # プロット
-#    po.plot(fig, filename=grafFname,auto_open=False)
 
+# combert to plotly graf. for analysis.
+def makeGrafHtml(fname,datas):
+    grafFname = fname + "_glaf.html"
+    trace = []
+    index = 0
+    times = []
+    for i in range(len(datas[0]["datas"])):
+        times.append(i)
+    for dataline in datas:
+        profilename = ""
+        if(str(index) in profiles.keys()):
+            profilename = profiles[str(index)][IDProfileSlot]
+        trace.append(go.Scatter(
+            x = times,
+            y = dataline["datas"],
+            name = str(index)+"_"+profilename ))
+        index = index + 1
+    # layoutを作成
+    layout = go.Layout(
+        # デフォルトでは描画領域が狭いのでmarginを0に
+        margin=dict(
+            l=0,
+            r=0,
+            b=0,
+            t=0
+        )
+    )
+    # traceとlayoutからfigureを作成
+    fig = go.Figure(data= trace, layout=layout)
+    # プロット
+    po.plot(fig, filename=grafFname,auto_open=False)
+
+
+# 
 def getConvertedValue(profileIndex,value):
 	if(str(profileIndex) in profiles.keys()):
 		return "{0:.3f}".format(value * profiles[str(profileIndex)][multpleProfileSlot] + profiles[str(profileIndex)][diffProfileSlot])
 	else:
 		return "{0:.3f}".format(value )
 
+
+#
 def makeMotion3Json(fname,datas):
 	motionFileName = fname + ".motion3.json"
 	FPS = 10.0
@@ -159,6 +151,8 @@ def makeMotion3Json(fname,datas):
 	wFile.write("}")
 	wFile.close()
 	
+
+#
 def getCalcedValue(line,datas,index):
 	ret = 0.0
 	for ele in line["Element"]:
@@ -166,6 +160,8 @@ def getCalcedValue(line,datas,index):
 		ret = ret + eleValue
 	return "{0:.3f}".format(ret )
 
+
+#
 def makeMotion3Json2(fname,datas,selectIdType,outMultiParams):
 	motionFileName = fname + selectIdType + ".motion3.json"
 	FPS = 10.0
@@ -230,6 +226,8 @@ def makeMotion3Json2(fname,datas,selectIdType,outMultiParams):
 	wFile.write("}")
 	wFile.close()
 
+
+# make rpl analysis file. overwrite one parameter to sawtooth wave.
 def simpleLineOver(targetFname,OverIndex,datas,startSize,LoopSize):
 	baseFile = open(targetFname,"rb")
 	wFileName =targetFname + "_" + str(OverIndex) + "nk.rpl"
@@ -254,6 +252,8 @@ def simpleLineOver(targetFname,OverIndex,datas,startSize,LoopSize):
 		baseFile.close()
 		wFile.close()
 
+
+# one to one. old param combert settings.
 multpleProfileSlot = 2
 diffProfileSlot = 3
 IDProfileSlot = 1
@@ -287,6 +287,14 @@ profiles = {"921":["Time","Time",1,0]}
 #profiles[""] = ["","PARAM_BROW_L_FORM",1,0]
 #profiles[""] = ["","PARAM_BROW_R_FORM",1,0]
 
+# -----------------------------------
+# Combert Settings. multi parameter 
+#                                                                                       line number    multi value     add value
+# outMultiParams.append({"ID2":"PARAM_BODY_ANGLE_X","ID3":"ParamBodyAngleX","Element":[[115           ,(10/45)        ,0]]})
+#
+# outputParam = { dataline[Ele0] * Ele1 + Ele2 } + { dataline[Ele0] * Ele1 + Ele2 } ...
+#
+# VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
 outMultiParams = []
 outMultiParams.append({"ID2":"PARAM_BODY_ANGLE_X","ID3":"ParamBodyAngleX","Element":[[115,(10/45),0]]})
 outMultiParams.append({"ID2":"PARAM_BODY_ANGLE_Z","ID3":"ParamBodyAngleZ","Element":[[5,-20,10]]})
@@ -307,7 +315,6 @@ outMultiParams.append({"ID2":"PARAM_CHEEK","ID3":"ParamCheek","Element":[[ 48,1,
 outMultiParams.append({"ID2":"PARAM_TEAR","ID3":"ParamTear","Element":[[ 49,1,0 ]]})
 outMultiParams.append({"ID2":"PARAM_RAGE","ID3":"ParamRage","Element":[[ 50,1,0 ]]})
 outMultiParams.append({"ID2":"PARAM_HAIR_FLUFFY","ID3":"ParamHairFluffy","Element":[[ 51,1,0 ]]})
-
 outMultiParams.append({"ID2":"PARAM_EYE_FORM","ID3":"ParamEyeForm","Element":[[ 20,-0.5,0 ], [ 20,-0.5,0 ], [ 22,+0.5,0 ], [ 23,+0.5,0 ]]})
 outMultiParams.append({"ID2":"PARAM_BROW_L_Y","ID3":"ParamBrowLY","Element":[[ 20,-0.5,0 ], [ 24,-0.5,0 ], [ 22,+0.5,0 ], [ 26,+0.5,0 ]]})
 outMultiParams.append({"ID2":"PARAM_BROW_R_Y","ID3":"ParamBrowRY","Element":[[ 21,-0.5,0 ], [ 25,-0.5,0 ], [ 23,+0.5,0 ], [ 27,+0.5,0 ]]})
@@ -315,41 +322,70 @@ outMultiParams.append({"ID2":"PARAM_BROW_L_ANGLE","ID3":"ParamBrowLAngle","Eleme
 outMultiParams.append({"ID2":"PARAM_BROW_R_ANGLE","ID3":"ParamBrowRAngle","Element":[[ 21,-0.5,0 ], [ 23,+0.5,0 ]]})
 outMultiParams.append({"ID2":"PARAM_BROW_L_FORM","ID3":"ParamBrowLForm","Element":[[ 20,-0.5,0 ], [ 24,-0.5,0 ], [ 22,+0.5,0 ], [ 26,+0.5,0 ]]})
 outMultiParams.append({"ID2":"PARAM_BROW_R_FORM","ID3":"ParamBrowRForm","Element":[[ 21,-0.5,0 ], [ 25,-0.5,0 ], [ 23,+0.5,0 ], [ 27,+0.5,0 ]]})
+# AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+# -----------------------------------
 
+# -----------------------------------
+# target Folder
+# VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
 folderPath = "Set Your rpl files folder path."
+# AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+# -----------------------------------
 
 fileList = glob.glob(folderPath+"\\*.rpl")
 
-fileSizes = []
-for f in fileList:
-	fileSizes.append(getFileSize(f))
-	print(f+":"+ str(fileSizes[len(fileSizes)-1]))
+# -----------------------------------
+# Calc 1 frame data size and header size.
+# VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
+frameSizeCalcing = True
 
-fileSizes.sort()
+if( frameSizeCalcing ):
+	fileSizes = []
+	for f in fileList:
+		fileSizes.append(getFileSize(f))
+		print(f+":"+ str(fileSizes[len(fileSizes)-1]))
 
-print(fileSizes)
-fileDiffSizes = []
+	fileSizes.sort()
 
-for i in range(1,len(fileSizes)):
-	fileDiffSizes.append(fileSizes[i] - fileSizes[0])
+	print(fileSizes)
+	fileDiffSizes = []
 
-diffSize = gcd_list(fileDiffSizes)
-print(diffSize)
+	for i in range(1,len(fileSizes)):
+		fileDiffSizes.append(fileSizes[i] - fileSizes[0])
 
-sSize = 0
-for i in range(0,len(fileSizes)):
-	sSize = fileSizes[i] % diffSize
-	print(fileSizes[i] % diffSize)
+	diffSize = gcd_list(fileDiffSizes)
+	print(diffSize)
+	sSize = 0
+	for i in range(0,len(fileSizes)):
+		sSize = fileSizes[i] % diffSize
+		print(fileSizes[i] % diffSize)
+
+	for f in fileList:
+		print(f)
+		#convert_to_csv(f,sSize,diffSize)
+		datas = readRPL(f,sSize,diffSize)
+		convert_mem_to_csv(f,datas,True)
+		#makeGrafHtml(f,datas)
+		makeMotion3Json2(f,datas,"ID2",outMultiParams)
+		makeMotion3Json2(f,datas,"ID3",outMultiParams)
+else:
+	diffSize = 3952	
+	sSize = 24
+# AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+# ----------------------------------------------
+
 
 for f in fileList:
 	print(f)
-	#convert_to_csv(f,sSize,diffSize)
 	datas = readRPL(f,sSize,diffSize)
 	convert_mem_to_csv(f,datas,True)
 	#makeGrafHtml(f,datas)
 	makeMotion3Json2(f,datas,"ID2",outMultiParams)
 	makeMotion3Json2(f,datas,"ID3",outMultiParams)
 
+# ----------------------------------------------
+# make rpl analysis files
+# VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
 #f = fileList[-1]
 #datas = readRPL(f,sSize,diffSize)
 #print(len(datas))
@@ -357,5 +393,7 @@ for f in fileList:
 #	print(i)
 #	if(datas[i]["min"] != datas[i]["max"]):
 #		simpleLineOver(fileList[-1],i,datas,sSize,diffSize)
+# AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+# ----------------------------------------------
 
 print("end")
